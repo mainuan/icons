@@ -1,0 +1,28 @@
+Source: mainuan-icon-themes
+Section: x11
+Priority: optional
+Maintainer: Mainuan Packaging <openwebosbr@gmail.com>
+Uploaders: ruscher <rruscher@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/mainuan/icons
+Vcs-Browser: https://github.com/mainuan/icons
+Vcs-Git: https://github.com/mainuan/icons.git
+
+Package: mainuan-icon-themes
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Recommends: breeze-icon-theme, hicolor-icon-theme
+Description: temas de ícones Kora do Mainuan Linux
+ Seis variações de cor do tema de ícones Kora feitas para o Mainuan Linux,
+ uma para cada cor de destaque do sistema:
+  - kora-brown (Kora Marrom)
+  - kora-cyan (Kora Ciano)
+  - kora-grey (Kora Cinza)
+  - kora-lima (Kora Lima)
+  - kora-magenta (Kora Magenta)
+  - kora-violet (Kora Violet)
+ .
+ Os temas herdam do Breeze e do hicolor os ícones que não definem.

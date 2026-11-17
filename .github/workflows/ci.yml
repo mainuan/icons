@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v[0-9]*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  package:
+    permissions:
+      contents: write # only the release job uses it, and only for v* tags
+    uses: mainuan/.github/.github/workflows/debian-package.yml@2409a50535befe90ac3bbfc4db6eed7d65eac4e5
+    with:
+      package: mainuan-icon-themes
+      release-title: Mainuan Icon Themes
+      # The archives must unpack cleanly, and the source package must not
+      # carry .git or build leftovers.
+      test-command: |
+        sh -n debian/unpack-icon-themes
+        dpkg-source -Zgzip -z1 --build .
+        tar -tzf ../mainuan-icon-themes_*.tar.gz > ../source-files.txt
+        if grep -E '(^|/)\.git(/|$)|(^|/)build/|/debian/(\.debhelper|debhelper-build-stamp|files$|.*\.substvars$|mainuan-icon-themes/)' ../source-files.txt; then
+          echo "::error::source package carries VCS or build files"; exit 1
+        fi
+        du -h ../mainuan-icon-themes_*.tar.gz
+        rm -f ../mainuan-icon-themes_*.dsc ../mainuan-icon-themes_*.tar.gz ../source-files.txt
+      # gtk-update-icon-cache provides update-icon-caches, called by the
+      # dh_icons snippet: the smoke test checks the generated caches.
+      extra-install-packages: gtk-update-icon-cache breeze-icon-theme hicolor-icon-theme python3
+      smoke-command: |
+        for t in kora-brown kora-cyan kora-grey kora-lima kora-magenta kora-violet; do
+          d=/usr/share/icons/$t
+          test -s "$d/icon-theme.cache"
+          test "$d/icon-theme.cache" -nt "$d/index.theme"
+          test -f "$d/places/scalable/folder.svg"
+          test -f "$d/actions/16/document-save.svg"
+          python3 -I - "$d" <<'PY'
+        import configparser, os, sys
+        d = sys.argv[1]
+        c = configparser.ConfigParser(interpolation=None, strict=False)
+        c.optionxform = str
+        c.read(os.path.join(d, "index.theme"), encoding="utf-8")
+        theme = c["Icon Theme"]
+        assert theme["Name"].startswith("Kora "), theme["Name"]
+        assert theme["Inherits"] == "breeze,hicolor", theme["Inherits"]
+        dirs = [x for x in theme["Directories"].split(",") if x]
+        present = [x for x in dirs if os.path.isdir(os.path.join(d, x))]
+        for x in present:
+            assert x in c, f"{x}: no section in index.theme"
+            int(c[x]["Size"])
+        assert len(present) >= 30, present
+        print(f"{d}: {theme['Name']}, {len(present)}/{len(dirs)} directories")
+        PY
+        done
+        broken="$(find /usr/share/icons/kora-* -xtype l)"
+        test -z "$broken" || { echo "$broken"; exit 1; }
+        if find /usr/share/icons/kora-* -type l -lname '/*' | grep -q .; then exit 1; fi

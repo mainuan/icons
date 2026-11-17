@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	debian/unpack-icon-themes build/icons kora-*.tar.gz

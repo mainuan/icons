@@ -1,0 +1,55 @@
+#!/bin/sh
+# Extrai os temas de ícones kora-*.tar.gz em DESTINO/<tema> e corrige o que
+# não pode ir para um pacote: cache pré-gerado (é gerado na instalação pelo
+# dh_icons), scripts de manutenção, arquivos ocultos soltos e links
+# simbólicos absolutos que apontam para a pasta pessoal de quem criou o tema.
+#
+#   debian/unpack-icon-themes DESTINO ARQUIVO.tar.gz...
+set -eu
+
+dest=$1
+shift
+mkdir -p "$dest"
+
+for archive in "$@"; do
+    theme=$(basename "$archive" .tar.gz)
+
+    # Todo membro precisa estar dentro de <tema>/, sem "..".
+    bad=$(tar -tzf "$archive" | sed 's|^\./||' | grep -v "^$theme/" || true)
+    bad="$bad$(tar -tzf "$archive" | grep -E '(^|/)\.\.(/|$)' || true)"
+    if [ -n "$bad" ]; then
+        echo "$archive: membros fora de $theme/:" >&2
+        echo "$bad" | head >&2
+        exit 1
+    fi
+
+    rm -rf "${dest:?}/$theme"
+    tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$dest"
+    root="$dest/$theme"
+    test -f "$root/index.theme"
+
+    rm -f "$root/icon-theme.cache"
+    find "$root" -type f -name '*.sh' -delete
+    find "$root" -name '.*' ! -name '.' -print -exec rm -rf {} +
+
+    # Links absolutos: o alvo tem o mesmo nome na mesma pasta.
+    find "$root" -type l -lname '/*' | while IFS= read -r link; do
+        target=$(basename "$(readlink "$link")")
+        if [ ! -e "$(dirname "$link")/$target" ]; then
+            echo "$link: alvo $target inexistente" >&2
+            exit 1
+        fi
+        ln -sfn "$target" "$link"
+    done
+
+    broken=$(find "$root" -xtype l)
+    if [ -n "$broken" ]; then
+        echo "$theme: links quebrados:" >&2
+        echo "$broken" | head >&2
+        exit 1
+    fi
+
+    find "$root" -type d -exec chmod 0755 {} +
+    find "$root" -type f -exec chmod 0644 {} +
+    echo "$theme: $(find "$root" -type f | wc -l) arquivos, $(find "$root" -type l | wc -l) links"
+done
