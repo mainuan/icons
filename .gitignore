@@ -1,0 +1,7 @@
+# Artefatos de dpkg-buildpackage / debhelper
+/build/
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/*.substvars
+/debian/mainuan-icon-themes/
