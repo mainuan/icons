@@ -59,6 +59,9 @@ Kora icon theme by [bikass](https://github.com/bikass/kora); Mainuan colour
 variants by Daigo ([daigoasuka](https://github.com/daigoasuka)); Debian
 packaging and CI by Rafael Ruscher ([ruscher](https://github.com/ruscher)).
 
-This repository has **no `LICENSE` file**. According to `debian/copyright`,
-Kora is distributed under the GNU GPL version 3 and the Mainuan variants
-follow the same license.
+The Kora icon themes by [bikass](https://github.com/bikass/kora) and
+Mainuan's colour variations are distributed under the **GNU GPL version 3**
+(see [`LICENSE`](LICENSE)); being derived from GPL-3 work, they cannot be
+relicensed. Mainuan's own work here (packaging in `debian/` and the
+documentation) is distributed under the **GNU GPL version 2** (GPL-2.0), as
+recorded in [`debian/copyright`](debian/copyright).

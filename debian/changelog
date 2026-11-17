@@ -1,3 +1,10 @@
+mainuan-icon-themes (2026.11.17.1) resolute; urgency=medium
+
+  * Licenças: LICENSE com a GNU GPL versão 3 dos temas Kora e das variações
+    de cor; o empacotamento e a documentação do Mainuan passam a GPL-2.0.
+
+ -- ruscher <rruscher@gmail.com>  Tue, 17 Nov 2026 18:13:44 -0300
+
 mainuan-icon-themes (2026.11.17) resolute; urgency=medium
 
   * Primeiro pacote Debian: os seis temas Kora são extraídos dos arquivos

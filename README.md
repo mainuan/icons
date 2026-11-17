@@ -8,6 +8,7 @@ Seis variações de cor do tema de ícones Kora para o **Mainuan Linux**, empaco
 
 [![CI](https://github.com/mainuan/icons/actions/workflows/ci.yml/badge.svg)](https://github.com/mainuan/icons/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/mainuan/icons)](https://github.com/mainuan/icons/releases)
+[![Licença](https://img.shields.io/github/license/mainuan/icons)](LICENSE)
 ![Base](https://img.shields.io/badge/base-Kubuntu%2026.04%20LTS-0079c1)
 ![Plasma](https://img.shields.io/badge/KDE%20Plasma-6.6-1d99f3)
 
@@ -135,7 +136,11 @@ mudanças por pull request. O CI roda em cada pull request, em
 
 ## Licença
 
-Este repositório **não tem arquivo `LICENSE`**. Segundo o `debian/copyright`,
-o Kora é distribuído sob a GNU GPL versão 3, e as variações do Mainuan seguem
-a mesma licença (© 2017-2026 bikass, © 2025-2026 daigo). O texto da licença
-fica em `/usr/share/common-licenses/GPL-3` nos sistemas Debian e Ubuntu.
+Os temas de ícones Kora, de [bikass](https://github.com/bikass/kora), e as
+variações de cor feitas pelo Mainuan são distribuídos sob a **GNU GPL
+versão 3** (texto em [`LICENSE`](LICENSE)). Por serem derivados de uma obra
+GPL-3, não podem ser relicenciados.
+
+O trabalho próprio do Mainuan neste repositório (empacotamento em `debian/`
+e documentação) é distribuído sob a **GNU GPL versão 2** (GPL-2.0), como
+registra o [`debian/copyright`](debian/copyright).

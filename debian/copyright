@@ -12,8 +12,13 @@ Comment: Os arquivos kora-*.tar.gz são variações de cor do tema de ícones
  Mainuan seguem a mesma licença.
 
 Files: debian/*
+       docs/*
+       README.md
+       README.en.md
 Copyright: 2026 ruscher <rruscher@gmail.com>
-License: GPL-3
+           2025-2026 daigo <openwebosbr@gmail.com>
+License: GPL-2
+Comment: Empacotamento e documentação do Mainuan.
 
 License: GPL-3
  This program is free software: you can redistribute it and/or modify
@@ -27,3 +32,16 @@ License: GPL-3
  .
  On Debian systems, the complete text of the GNU General Public License
  version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; version 2 of the License.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
