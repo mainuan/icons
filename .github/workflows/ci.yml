@@ -75,7 +75,7 @@ jobs:
         for t in kora-brown kora-cyan kora-grey kora-lima kora-magenta kora-violet; do
           for i in apps/symbolic/preferences-system-symbolic.svg panel/22/network-wireless-acquiring-symbolic.svg panel/22/battery-level-20-charging-symbolic.svg; do
             f=/usr/share/icons/$t/$i
-            grep -q 'fill:currentColor' "$f" && grep -q 'ColorScheme-Text' "$f" \
+            grep -Eq 'fill(:|=")currentColor' "$f" && grep -q 'ColorScheme-Text' "$f" \
               && ! grep -Eq 'fill:(rgb\(2[0-9][0-9],|#[def][0-9a-f]{5})' "$f" \
               || { echo "::error::$f is not recolourable"; exit 1; }
           done
