@@ -26,6 +26,12 @@ jobs:
       # carry .git or build leftovers.
       test-command: |
         sh -n debian/unpack-icon-themes
+        # Every monochrome icon follows the Plasma colour scheme after unpacking
+        # (regression: a light gear next to dark tray icons on a light panel).
+        chk=$(mktemp -d)
+        sh debian/unpack-icon-themes "$chk" kora-*.tar.gz >/dev/null
+        python3 -I debian/normalize-symbolic-icons --check "$chk"/kora-*
+        rm -rf "$chk"
         dpkg-source -Zgzip -z1 --build .
         tar -tzf ../mainuan-icon-themes_*.tar.gz > ../source-files.txt
         if grep -E '(^|/)\.git(/|$)|(^|/)build/|/debian/(\.debhelper|debhelper-build-stamp|files$|.*\.substvars$|mainuan-icon-themes/)' ../source-files.txt; then
@@ -64,3 +70,13 @@ jobs:
         broken="$(find /usr/share/icons/kora-* -xtype l)"
         test -z "$broken" || { echo "$broken"; exit 1; }
         if find /usr/share/icons/kora-* -type l -lname '/*' | grep -q .; then exit 1; fi
+        # The panel gear of the Laetum Control Center (and the other tray icons)
+        # must be recolourable: currentColor + ColorScheme-Text, no fixed grey.
+        for t in kora-brown kora-cyan kora-grey kora-lima kora-magenta kora-violet; do
+          for i in apps/symbolic/preferences-system-symbolic.svg panel/22/network-wireless-acquiring-symbolic.svg panel/22/battery-level-20-charging-symbolic.svg; do
+            f=/usr/share/icons/$t/$i
+            grep -q 'fill:currentColor' "$f" && grep -q 'ColorScheme-Text' "$f" \
+              && ! grep -Eq 'fill:(rgb\(2[0-9][0-9],|#[def][0-9a-f]{5})' "$f" \
+              || { echo "::error::$f is not recolourable"; exit 1; }
+          done
+        done
