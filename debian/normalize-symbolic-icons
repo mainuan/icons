@@ -1,0 +1,242 @@
+#!/usr/bin/python3 -I
+"""Make the monochrome icons of a Kora theme follow the Plasma colour scheme.
+
+Plasma (KIconLoader / Kirigami.Icon) recolours an icon by rewriting the
+stylesheet with id "current-color-scheme": a shape painted with currentColor
+and class "ColorScheme-Text" turns into the text colour of the panel, the
+menu or the window it is drawn on. Some Kora icons paint their shapes with a
+fixed grey instead (for example apps/symbolic/preferences-system-symbolic.svg
+uses rgb(235,235,235)), or with no paint at all (black), so they stay light on
+a light panel, or dark on a dark one, next to icons that do follow the theme.
+
+This script rewrites, in place, only:
+  * *-symbolic.svg icons: every achromatic fixed fill/stroke becomes
+    currentColor + class ColorScheme-Text; icons with no paint at all get
+    currentColor; chromatic colours (red alert dots and the like) are kept;
+  * other icons under panel/: only monochrome ones (a single grey), so full
+    colour tray icons are left alone.
+
+The original archives are not modified; this runs on the unpacked copy at
+build time.
+
+  debian/normalize-symbolic-icons [--check] THEME_DIR...
+
+--check changes nothing and exits 1 if an icon would still need rewriting
+(the CI runs it on the built package).
+"""
+import os
+import re
+import sys
+
+SHAPES = ("path", "rect", "circle", "ellipse", "polygon", "polyline", "line",
+          "g", "use", "text")
+SHAPE_TAG = re.compile(r"<(%s)\b([^>]*?)(/?)>" % "|".join(SHAPES), re.S)
+SKIP_BLOCK = re.compile(r"<(defs|mask|clipPath|linearGradient|radialGradient|pattern)\b.*?</\1\s*>", re.S)
+STYLE_ATTR = re.compile(r'\sstyle\s*=\s*"([^"]*)"')
+CLASS_ATTR = re.compile(r'\sclass\s*=\s*"([^"]*)"')
+PAINT_ATTR = re.compile(r'\s(fill|stroke)\s*=\s*"([^"]*)"')
+SVG_OPEN = re.compile(r"<svg\b[^>]*>", re.S)
+SCHEME_STYLE = re.compile(r'(<style\b[^>]*id\s*=\s*"current-color-scheme"[^>]*>)(.*?)(</style>)', re.S)
+DEFAULT_TEXT = "#dfdfdf"  # what the rest of Kora uses outside Plasma
+# Kora's Highlight, PositiveText, NeutralText and NegativeText colours
+SEMANTIC = {(0x42, 0x85, 0xf4), (0x4c, 0xaf, 0x50), (0xff, 0x98, 0x00), (0xf4, 0x43, 0x36)}
+NAMED = {"white": (255, 255, 255), "black": (0, 0, 0), "gray": (128, 128, 128),
+         "grey": (128, 128, 128), "silver": (192, 192, 192)}
+
+
+def rgb(value):
+    v = value.strip().lower()
+    if v in NAMED:
+        return NAMED[v]
+    m = re.fullmatch(r"#([0-9a-f]{3})", v)
+    if m:
+        return tuple(int(c * 2, 16) for c in m.group(1))
+    m = re.fullmatch(r"#([0-9a-f]{6})", v)
+    if m:
+        return tuple(int(m.group(1)[i:i + 2], 16) for i in (0, 2, 4))
+    m = re.fullmatch(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", v)
+    if m:
+        return tuple(int(x) for x in m.groups())
+    return None
+
+
+def achromatic(value):
+    c = rgb(value)
+    return c is not None and max(c) - min(c) <= 12
+
+
+def fixed_colour(value):
+    return rgb(value) is not None
+
+
+def outside_blocks(text):
+    """Spans of text that are not inside defs, masks, clip paths or gradients."""
+    spans, pos = [], 0
+    for m in SKIP_BLOCK.finditer(text):
+        spans.append((pos, m.start()))
+        pos = m.end()
+    spans.append((pos, len(text)))
+    return spans
+
+
+def paints(attrs):
+    """(property, value) of every fill/stroke set on a tag, style first."""
+    out = []
+    sm = STYLE_ATTR.search(attrs)
+    if sm:
+        for decl in sm.group(1).split(";"):
+            if ":" in decl:
+                k, v = decl.split(":", 1)
+                if k.strip() in ("fill", "stroke"):
+                    out.append((k.strip(), v.strip()))
+    for m in PAINT_ATTR.finditer(attrs):
+        out.append((m.group(1), m.group(2).strip()))
+    return out
+
+
+def add_class(attrs):
+    cm = CLASS_ATTR.search(attrs)
+    if cm:
+        if "ColorScheme-Text" in cm.group(1).split():
+            return attrs
+        return attrs[:cm.start(1)] + (cm.group(1) + " ColorScheme-Text").strip() + attrs[cm.end(1):]
+    return attrs + ' class="ColorScheme-Text"'
+
+
+def recolour(attrs, convert):
+    """Replace the paints for which convert(value) is true by currentColor."""
+    changed = False
+
+    def style_sub(m):
+        nonlocal changed
+        decls = []
+        for decl in m.group(1).split(";"):
+            if ":" in decl:
+                k, v = decl.split(":", 1)
+                if k.strip() in ("fill", "stroke") and convert(v.strip()):
+                    decl = "%s:currentColor" % k.strip()
+                    changed = True
+            decls.append(decl)
+        return ' style="%s"' % ";".join(decls)
+
+    def attr_sub(m):
+        nonlocal changed
+        if convert(m.group(2).strip()):
+            changed = True
+            return ' %s="currentColor"' % m.group(1)
+        return m.group(0)
+
+    attrs = STYLE_ATTR.sub(style_sub, attrs)
+    attrs = PAINT_ATTR.sub(attr_sub, attrs)
+    return (add_class(attrs) if changed else attrs), changed
+
+
+def visible_tags(text):
+    for start, end in outside_blocks(text):
+        for m in SHAPE_TAG.finditer(text, start, end):
+            yield m
+
+
+def ensure_scheme_style(text):
+    m = SCHEME_STYLE.search(text)
+    if m:
+        if ".ColorScheme-Text" in m.group(2):
+            return text
+        body = m.group(2).rstrip() + " .ColorScheme-Text { color:%s; }\n  " % DEFAULT_TEXT
+        return text[:m.start(2)] + body + text[m.end(2):]
+    svg = SVG_OPEN.search(text)
+    style = ('\n <defs>\n  <style id="current-color-scheme" type="text/css">\n'
+             '   .ColorScheme-Text { color:%s; }\n  </style>\n </defs>' % DEFAULT_TEXT)
+    return text[:svg.end()] + style + text[svg.end():]
+
+
+def plan(text, symbolic):
+    """How to rewrite an icon: None (leave it) or a converter function."""
+    if not SVG_OPEN.search(text):
+        return None
+    colours, any_paint, uses_current = set(), False, False
+    for m in visible_tags(text):
+        for _, v in paints(m.group(2)):
+            any_paint = True
+            if v.lower() == "currentcolor":
+                uses_current = True
+            elif fixed_colour(v):
+                colours.add(rgb(v))
+    greys = {c for c in colours if max(c) - min(c) <= 12}
+    if symbolic:
+        if greys:
+            return "greys"
+        if not any_paint and not uses_current:
+            return "unpainted"
+        return None
+    # Other panel icons: a single grey, plus at most Kora's status colours
+    # (alert dots and the like). Anything else is a full colour icon.
+    if len(greys) == 1 and colours - greys <= SEMANTIC:
+        return "greys"
+    return None
+
+
+def rewrite(text, how):
+    out, pos = [], 0
+    for m in visible_tags(text):
+        tag, attrs, close = m.group(1), m.group(2), m.group(3)
+        if how == "greys":
+            attrs, _ = recolour(attrs, achromatic)
+        elif how == "unpainted" and tag != "g" and not paints(attrs):
+            attrs = add_class(attrs + ' fill="currentColor"')
+        out.append(text[pos:m.start()])
+        out.append("<%s%s%s>" % (tag, attrs, close))
+        pos = m.end()
+    out.append(text[pos:])
+    return ensure_scheme_style("".join(out))
+
+
+def candidates(theme):
+    for d, _, files in os.walk(theme):
+        in_panel = "/panel/" in (d + "/").replace(os.sep, "/")
+        for f in sorted(files):
+            p = os.path.join(d, f)
+            if not f.endswith(".svg") or os.path.islink(p):
+                continue
+            symbolic = f.endswith("-symbolic.svg")
+            if symbolic or in_panel:
+                yield p, symbolic
+
+
+def main(argv):
+    check = "--check" in argv
+    themes = [a for a in argv if a != "--check"]
+    if not themes:
+        print(__doc__.strip().splitlines()[-4], file=sys.stderr)
+        return 2
+    pending = 0
+    for theme in themes:
+        changed = 0
+        for path, symbolic in candidates(theme):
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            how = plan(text, symbolic)
+            if how is None:
+                continue
+            new = rewrite(text, how)
+            if new == text:
+                continue
+            if plan(new, symbolic) is not None:
+                print("%s: could not normalise" % path, file=sys.stderr)
+                return 1
+            changed += 1
+            if check:
+                print("%s: fixed colour (%s)" % (os.path.relpath(path, theme), how))
+                continue
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                fh.write(new)
+            os.replace(tmp, path)
+        pending += changed
+        print("%s: %d icon(s) %s" % (os.path.basename(theme.rstrip("/")), changed,
+                                     "need normalising" if check else "now follow the colour scheme"))
+    return 1 if check and pending else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

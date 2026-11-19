@@ -3,6 +3,8 @@
 # não pode ir para um pacote: cache pré-gerado (é gerado na instalação pelo
 # dh_icons), scripts de manutenção, arquivos ocultos soltos e links
 # simbólicos absolutos que apontam para a pasta pessoal de quem criou o tema.
+# Também faz os ícones monocromáticos seguirem o esquema de cores
+# (debian/normalize-symbolic-icons).
 #
 #   debian/unpack-icon-themes DESTINO ARQUIVO.tar.gz...
 set -eu
@@ -48,6 +50,10 @@ for archive in "$@"; do
         echo "$broken" | head >&2
         exit 1
     fi
+
+    # Ícones monocromáticos com cor fixa não acompanham o esquema de cores do
+    # Plasma (ex.: a engrenagem clara num painel claro); ver o próprio script.
+    python3 -I "$(dirname "$0")/normalize-symbolic-icons" "$root"
 
     find "$root" -type d -exec chmod 0755 {} +
     find "$root" -type f -exec chmod 0644 {} +

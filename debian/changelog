@@ -1,3 +1,16 @@
+mainuan-icon-themes (2026.11.19) resolute; urgency=medium
+
+  * Ícones monocromáticos seguem o esquema de cores do Plasma: 366 a 369
+    ícones por tema (simbólicos e da bandeja) usavam cinza fixo ou nenhuma
+    cor, e ficavam claros num painel claro ao lado dos demais. Entre eles a
+    engrenagem preferences-system-symbolic do Laetum Control Center. A
+    correção é feita na compilação (debian/normalize-symbolic-icons), sem
+    alterar os arquivos originais dos temas; cores de alerta e ícones
+    coloridos são mantidos.
+  * CI: verificação de regressão das cores nos seis temas.
+
+ -- ruscher <rruscher@gmail.com>  Thu, 19 Nov 2026 10:00:00 -0300
+
 mainuan-icon-themes (2026.11.17.1) resolute; urgency=medium
 
   * Licenças: LICENSE com a GNU GPL versão 3 dos temas Kora e das variações
